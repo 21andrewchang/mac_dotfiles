@@ -1,0 +1,18 @@
+# ── Instant Space switching (no slide animation) ──────────────────────
+# These replace macOS "Switch to Desktop N" / "Move left/right a space".
+# Disable the native ones in:
+#   System Settings ▸ Keyboard ▸ Keyboard Shortcuts… ▸ Mission Control
+# so they don't double-fire.
+# ──────────────────────────────────────────────────────────────────────
+
+# Jump directly to a Space (you currently have 6)
+ctrl - 1 : yabai -m space --focus 1
+ctrl - 2 : yabai -m space --focus 2
+ctrl - 3 : yabai -m space --focus 3
+ctrl - 4 : yabai -m space --focus 4
+ctrl - 5 : yabai -m space --focus 5
+ctrl - 6 : yabai -m space --focus 6
+
+# Cycle to the previous / next Space
+ctrl - left  : yabai -m space --focus prev
+ctrl - right : yabai -m space --focus next

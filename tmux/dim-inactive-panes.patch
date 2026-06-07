@@ -1,0 +1,237 @@
+diff --git a/colour.c b/colour.c
+index 5fd91c9..e6ff511 100644
+--- a/colour.c
++++ b/colour.c
+@@ -120,6 +120,79 @@ colour_force_rgb(int c)
+ 	return (-1);
+ }
+ 
++/*
++ * Local patch: resolve a colour to RGB using the TERMINAL's real 16-colour
++ * palette for ANSI indices 0-15 (and bright 90-97), instead of tmux's built-in
++ * xterm defaults. Without this, dimming an ANSI colour starts from the wrong
++ * source (e.g. xterm green #00cd00 instead of the theme's #9ece6a), so the
++ * dimmed result doesn't match what the terminal shows when focused. Indices
++ * 16-255 are standard across terminals, so those fall through to colour_force_rgb.
++ *
++ * The palette below is Ghostty's tokyonight_storm. If you switch terminal theme,
++ * update these 16 values (from ~/.config/ghostty/themes/<theme> palette = N=...)
++ * and rebuild.
++ */
++static int
++colour_theme_rgb(int c)
++{
++	static const int p[16] = {
++		0x1d202f, 0xf7768e, 0x9ece6a, 0xe0af68,
++		0x7aa2f7, 0xbb9af7, 0x7dcfff, 0xa9b1d6,
++		0x414868, 0xff899d, 0x9fe044, 0xfaba4a,
++		0x8db0ff, 0xc7a9ff, 0xa4daff, 0xc0caf5
++	};
++
++	if (c & COLOUR_FLAG_RGB)
++		return (c);
++	if ((c & COLOUR_FLAG_256) && (c & 0xff) < 16)
++		return (p[c & 0xff] | COLOUR_FLAG_RGB);
++	if (c >= 0 && c <= 7)
++		return (p[c] | COLOUR_FLAG_RGB);
++	if (c >= 90 && c <= 97)
++		return (p[8 + c - 90] | COLOUR_FLAG_RGB);
++	return (colour_force_rgb(c));
++}
++
++/*
++ * Local patch: produce a dimmed version of a colour for inactive-pane content.
++ * Clean "same hue, just darker" dim: blend each channel `percent` toward the
++ * target colour (the pane/terminal background). No desaturation, so colours
++ * keep their hue and simply lose brightness — like reduced opacity over the
++ * background, which is what reads as a uniformly dimmed pane. `percent` comes
++ * from the `dim-inactive-percent` option (0 = no dim, 100 = fully background).
++ * If the source can't resolve to RGB the input is returned unchanged; if the
++ * target can't resolve, black is assumed.
++ */
++int
++colour_dim(int c, int target, int percent)
++{
++	u_char	r, g, b, tr, tg, tb;
++	int	rgb, trgb, sr, sg, sb, a;
++
++	a = percent;
++	if (a <= 0)
++		return (c);
++	if (a > 100)
++		a = 100;
++
++	rgb = colour_theme_rgb(c);
++	if (rgb == -1)
++		return (c);
++	trgb = colour_theme_rgb(target);
++	if (trgb == -1)
++		trgb = colour_join_rgb(0x00, 0x00, 0x00);
++
++	colour_split_rgb(rgb, &r, &g, &b);
++	colour_split_rgb(trgb, &tr, &tg, &tb);
++
++	/* Blend a% toward target — pure brightness reduction, hue preserved. */
++	sr = (r * (100 - a) + tr * a) / 100;
++	sg = (g * (100 - a) + tg * a) / 100;
++	sb = (b * (100 - a) + tb * a) / 100;
++
++	return (colour_join_rgb((u_char)sr, (u_char)sg, (u_char)sb));
++}
++
+ /* Convert colour to a string. */
+ const char *
+ colour_tostring(int c)
+diff --git a/options-table.c b/options-table.c
+index 81e4049..0f7614b 100644
+--- a/options-table.c
++++ b/options-table.c
+@@ -276,6 +276,18 @@ const struct options_table_entry options_table[] = {
+ 	  .text = "Default for the 'TERM' environment variable."
+ 	},
+ 
++	/* Local patch: inactive-pane dimming strength (see colour_dim). */
++	{ .name = "dim-inactive-percent",
++	  .type = OPTIONS_TABLE_NUMBER,
++	  .scope = OPTIONS_TABLE_SERVER,
++	  .minimum = 0,
++	  .maximum = 100,
++	  .default_num = 45,
++	  .unit = "percent",
++	  .text = "How far inactive-pane colours are blended toward the "
++		  "background. 0 disables dimming, 100 is fully background."
++	},
++
+ 	{ .name = "editor",
+ 	  .type = OPTIONS_TABLE_STRING,
+ 	  .scope = OPTIONS_TABLE_SERVER,
+diff --git a/screen-redraw.c b/screen-redraw.c
+index ce83bdf..6bf3a41 100644
+--- a/screen-redraw.c
++++ b/screen-redraw.c
+@@ -827,6 +827,14 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
+ 		top = ctx->statuslines;
+ 	else
+ 		top = 0;
++
++	/*
++	 * Local patch: full-redraw path. tty_attributes() will dim cells while
++	 * this flag is set; clear it after drawing this pane so subsequent
++	 * borders/status lines render at full brightness.
++	 */
++	tty->dim_inactive = (wp != w->active);
++
+ 	for (j = 0; j < wp->sy; j++) {
+ 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
+ 			continue;
+@@ -862,6 +870,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
+ 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
+ 	}
+ 
++	tty->dim_inactive = 0;
++
+ #ifdef ENABLE_SIXEL
+ 	tty_draw_images(c, wp, s);
+ #endif
+diff --git a/screen-write.c b/screen-write.c
+index 7fca3c7..ff72025 100644
+--- a/screen-write.c
++++ b/screen-write.c
+@@ -164,6 +164,13 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+ 	if (status_at_line(c) == 0)
+ 		ttyctx->yoff += status_line_size(c);
+ 
++	/*
++	 * Local patch: flag the client tty so subsequent tty_attributes() calls
++	 * dim cells when the pane is not the active pane in its window.
++	 * tty_write() clears this after the per-command call returns.
++	 */
++	c->tty.dim_inactive = (wp != wp->window->active);
++
+ 	return (1);
+ }
+ 
+diff --git a/tmux.h b/tmux.h
+index 071d9d2..e858da6 100644
+--- a/tmux.h
++++ b/tmux.h
+@@ -1525,6 +1525,15 @@ struct tty {
+ 
+ 	struct event	 key_timer;
+ 	struct tty_key	*key_tree;
++
++	/*
++	 * Local patch: when nonzero, the cells about to be drawn belong to a
++	 * pane that is not the active pane in its window. tty_attributes() uses
++	 * this to blend fg/bg/us toward the pane's default bg, dimming arbitrary
++	 * ANSI-colored content (e.g. lazygit) — not just cells using the
++	 * terminal default colors that window-style already covers.
++	 */
++	int		 dim_inactive;
+ };
+ 
+ /* Terminal command context. */
+@@ -2874,6 +2883,7 @@ int	 colour_find_rgb(u_char, u_char, u_char);
+ int	 colour_join_rgb(u_char, u_char, u_char);
+ void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
+ int	 colour_force_rgb(int);
++int	 colour_dim(int, int, int);
+ const char *colour_tostring(int);
+ int	 colour_fromstring(const char *s);
+ int	 colour_256toRGB(int);
+diff --git a/tty.c b/tty.c
+index 28dca40..d2b2a3b 100644
+--- a/tty.c
++++ b/tty.c
+@@ -1727,6 +1727,8 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
+ 			if (state == 0)
+ 				continue;
+ 			cmdfn(&c->tty, ctx);
++			/* Local patch: clear inactive-dim state set by the cb. */
++			c->tty.dim_inactive = 0;
+ 		}
+ 	}
+ }
+@@ -2714,6 +2716,42 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
+ 	tty_check_bg(tty, palette, &gc2);
+ 	tty_check_us(tty, palette, &gc2);
+ 
++	/*
++	 * Local patch: if the cell belongs to an inactive pane, blend its colors
++	 * toward the pane/terminal background so the WHOLE pane dims uniformly —
++	 * including plain default-foreground text and arbitrary ANSI-colored
++	 * content (lazygit, syntax). The default *background* is left untouched so
++	 * terminal transparency is preserved (dimming bg toward bg is a no-op).
++	 */
++	if (tty->dim_inactive) {
++		int pct = options_get_number(global_options,
++		    "dim-inactive-percent");
++		int target = defaults->bg;
++		if (target == 8 || target == -1)
++			target = tty->bg;
++		if (target == 8 || target == -1)
++			target = colour_join_rgb(0x00, 0x00, 0x00);
++
++		/*
++		 * Resolve "default" fg to the real terminal foreground (from the
++		 * terminal's OSC 10 response) so plain text dims too — colour_dim
++		 * can't dim the abstract default colour on its own.
++		 */
++		if (gc2.fg == 8 || gc2.fg == -1) {
++			gc2.fg = tty->fg;
++			if (gc2.fg == 8 || gc2.fg == -1)
++				gc2.fg = colour_join_rgb(0xc0, 0xc0, 0xc0);
++		}
++		gc2.fg = colour_dim(gc2.fg, target, pct);
++
++		/* Only dim an explicit background; keep default bg for transparency. */
++		if (gc2.bg != 8 && gc2.bg != -1)
++			gc2.bg = colour_dim(gc2.bg, target, pct);
++
++		if (gc2.us != 0 && gc2.us != 8)
++			gc2.us = colour_dim(gc2.us, target, pct);
++	}
++
+ 	/*
+ 	 * If any bits are being cleared or the underline colour is now default,
+ 	 * reset everything.

@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+# ── Minimal yabai config ──────────────────────────────────────────────
+# This is NOT a tiling setup. Its only job is to load the scripting
+# addition so that `yabai -m space --focus N` switches Spaces instantly,
+# with zero slide animation. Window layout is left to macOS (float).
+# Hotkeys live in ~/.config/skhd/skhdrc.
+# ──────────────────────────────────────────────────────────────────────
+
+# Reload the scripting addition whenever the Dock restarts...
+yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+# ...and load it now (relies on the passwordless sudoers entry).
+sudo yabai --load-sa
+
+# Do not auto-tile windows — keep normal macOS window behavior.
+yabai -m config layout float
+
+echo "yabai config loaded"

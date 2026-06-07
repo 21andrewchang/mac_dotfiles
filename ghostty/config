@@ -1,0 +1,73 @@
+font-size = 32
+font-style = medium
+background = 000000
+background-opacity = 0.99
+background-blur-radius = 0
+
+theme = "tokyonight_storm"
+
+macos-titlebar-style = hidden
+font-family = Hack Nerd Font
+
+mouse-hide-while-typing = true
+
+window-padding-y = 20,0
+window-padding-x = 20
+window-save-state = always
+
+# Cursor / terminal shaders. Uncomment the line(s) you want, then FULLY QUIT
+# Ghostty (Cmd+Q) and reopen — a config reload may not rebuild the shader
+# pipeline. Multiple custom-shader lines STACK (each one's output feeds the
+# next), so a trail + a spark effect can both be on. Don't stack two trails.
+# NOTE: Ghostty has no inline comments — the whole value after = is the path,
+# so descriptions must stay on their own lines above each entry.
+
+# ===== sahaj-b/ghostty-cursor-shaders (well documented, tunable) =====
+# Trails:
+# cursor_warp: Neovide-like trail (recommended) | cursor_sweep: shrinking sweep
+# cursor_tail: kitty-like comet tail
+custom-shader = shaders/cursor_warp.glsl
+# custom-shader = shaders/cursor_sweep.glsl
+# custom-shader = shaders/cursor_tail.glsl
+# Pulse/boom (fire on cursor mode change, e.g. vim insert<->normal):
+# sonic_boom: filled circle | ripple_cursor: ring | *_rectangle: cursor-shaped
+# custom-shader = shaders/sonic_boom_cursor.glsl
+# custom-shader = shaders/ripple_cursor.glsl
+# custom-shader = shaders/rectangle_boom_cursor.glsl
+# custom-shader = shaders/ripple_rectangle_cursor.glsl
+
+# ===== KroneCorylus/ghostty-shader-playground =====
+# -- Trail / smear (Neovide-style) --
+# cursor_smear: classic trail | _fade: fades out
+# _gradient: gradient color | _rainbow: rainbow
+# custom-shader = shaders/cursor_smear.glsl
+# custom-shader = shaders/cursor_smear_fade.glsl
+# custom-shader = shaders/cursor_smear_gradient.glsl
+# custom-shader = shaders/cursor_smear_rainbow.glsl
+
+# -- Blaze (flame burst on move) --
+# cursor_blaze: with trail | _tapered: tapered | _no_trail: brief flash
+# custom-shader = shaders/cursor_blaze.glsl
+# custom-shader = shaders/cursor_blaze_tapered.glsl
+# custom-shader = shaders/cursor_blaze_no_trail.glsl
+
+# -- Minimal --
+# cursor_border_1: animated outline only | cursor_frozen: frosted cursor
+# custom-shader = shaders/cursor_border_1.glsl
+# custom-shader = shaders/cursor_frozen.glsl
+
+# -- Flashy text & screen effects (not position trails) --
+# blaze_sparks / sparks / party_sparks: spark bursts on type
+# manga_slash: slash lines | shake: screen shake
+# zoom_and_aberration: zoom + chromatic aberration
+# last_letter_zoom: zooms the last typed letter
+custom-shader = shaders/blaze_sparks.glsl
+# custom-shader = shaders/sparks.glsl
+# custom-shader = shaders/party_sparks.glsl
+# custom-shader = shaders/manga_slash.glsl
+# custom-shader = shaders/shake.glsl
+# custom-shader = shaders/zoom_and_aberration.glsl
+# custom-shader = shaders/last_letter_zoom.glsl
+
+# Keep animating even when unfocused (sahaj-b boom/ripple effects need this).
+custom-shader-animation = always

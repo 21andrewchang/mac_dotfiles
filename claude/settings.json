@@ -1,0 +1,81 @@
+{
+  "model": "opus",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-status.sh\" working"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-status.sh\" working"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-track-edit.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-track-session.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-status.sh\" done"
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.config/tmux/scripts/claude-rename-window.sh\""
+          }
+        ]
+      }
+    ]
+  },
+  "enableWorkflows": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/andrewchang/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "syntaxHighlightingDisabled": false,
+  "effortLevel": "xhigh",
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
+}
