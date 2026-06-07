@@ -22,6 +22,9 @@ pause_and_exit() {
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || pause_and_exit "Not a git repository — nothing to diff."
 root=$(git rev-parse --show-toplevel 2>/dev/null)
+# Run from the repo root so the root-relative pathspecs below resolve correctly
+# (the repo may be an ancestor of this pane's dir, e.g. a ~/.config dotfiles repo).
+cd "$root" 2>/dev/null || true
 
 # Base ref recorded at session start (fall back to HEAD if missing/invalid).
 base="HEAD"
@@ -46,8 +49,8 @@ if [ ${#files[@]} -eq 0 ]; then
         && [ -z "$(git ls-files --others --exclude-standard)" ]; then
         pause_and_exit "No changes to review."
     fi
-    exec nvim -c "DiffviewOpen $base"
+    exec nvim -n -c "DiffviewOpen $base"
 fi
 
 # Scoped: only the files this instance touched, diffed since session start.
-exec nvim -c "DiffviewOpen $base -- ${files[*]}"
+exec nvim -n -c "DiffviewOpen $base -- ${files[*]}"

@@ -64,10 +64,19 @@ custom-shader = shaders/cursor_warp.glsl
 custom-shader = shaders/blaze_sparks.glsl
 # custom-shader = shaders/sparks.glsl
 # custom-shader = shaders/party_sparks.glsl
+# manga_slash: fixed norm()->normalize() typo on line 41
 # custom-shader = shaders/manga_slash.glsl
 # custom-shader = shaders/shake.glsl
 # custom-shader = shaders/zoom_and_aberration.glsl
 # custom-shader = shaders/last_letter_zoom.glsl
+
+# ===== tmux prefix flash (custom) =====
+# Fullscreen purple glow + ripples that appear while the tmux prefix (C-a) is
+# active. tmux sets the cursor color to a magenta sentinel on prefix; this
+# shader detects iCurrentCursorColor and paints the effect. Gated on color so
+# it fires ONLY on prefix — not on cursor movement or vim insert/normal. See
+# tmux.conf and tmux/scripts/prefix-flash.sh for the trigger side.
+custom-shader = shaders/prefix_flash.glsl
 
 # Keep animating even when unfocused (sahaj-b boom/ripple effects need this).
 custom-shader-animation = always
