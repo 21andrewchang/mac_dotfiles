@@ -5,18 +5,23 @@
 // so the real sonic-boom animation plays. Everything else is the original shader.
 
 // CONFIGURATION
-const float DURATION = 0.3;               // How long the ripple animates (seconds)
-const float MAX_RADIUS = 0.2;             // Max radius in normalized coords (0.5 = 1/4 screen height)
+
+
+const float DURATION = 0.15;               // How long the ripple animates (seconds)
+const float MAX_RADIUS = 0.1;             // Max radius in normalized coords (0.5 = 1/4 screen height)
 const float ANIMATION_START_OFFSET = 0.0;        // Start the ripple slightly progressed (0.0 - 1.0)
-vec4 COLOR = vec4(0.35, 0.36, 0.44, 1.0); // change to iCurrentCursorColor for your cursor's color
+vec4 COLOR = vec4(0.35, 0.36, 0.44, 0.4); // change to iCurrentCursorColor for your cursor's color
 const float COLOR_CHANGE_THRESHOLD = 0.10; // Triggers boom if cursor color changes by this much
-const float BLUR = 2.0;                    // Blur level in pixels
+const float BLUR = 3.0;                    // Blur level in pixels
+
+
 
 // pulsing cyan glow around the cursor while prefix is active (sparks-style bloom)
-const vec3  GLOW_COLOR     = vec3(0.502, 0.98, 1.0); // cyan, matches the boom
+const vec3 GLOW_COLOR = vec3(1.0, 0.725, 0.161);
+// const vec3  GLOW_COLOR     = vec3(0.502, 0.98, 1.0); // cyan, matches the boom
 const float GLOW_INTENSITY = 0.9;  // peak glow brightness
-const float GLOW_FADE      = 0.003; // higher = smaller/tighter glow
-const float PULSE_MIN      = 0.5;   // glow never dims below this fraction (stays on; 1.0 = no pulse)
+const float GLOW_FADE      = 0.002; // higher = smaller/tighter glow
+const float PULSE_MIN      = 0.1;   // glow never dims below this fraction (stays on; 1.0 = no pulse)
 const float PULSE_SPEED    = 5.0;   // pulse rate
 
 // black screen tint while prefix is active, faded in over TINT_FADE seconds
@@ -184,6 +189,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
                      iCurrentCursor.y - iCurrentCursor.w * 0.5);
     vec2 gp = fragCoord - cpix;
     float bloom = GLOW_INTENSITY / (1.0 + GLOW_FADE * dot(gp, gp));
-    float gpulse = mix(PULSE_MIN, 1.0, 0.5 + 0.5 * sin(iTime * PULSE_SPEED));
+    // Anchor the pulse phase to when the prefix fired (iTimeCursorChange) so the
+    // glow always starts at the same point. Without this it rides the global
+    // iTime clock and begins at a random phase on every prefix press. The -PI/2
+    // offset makes it bloom in from PULSE_MIN rather than starting mid-bright.
+    // Asymmetric pulse: the bloom-out (rising) half keeps the original timing,
+    // the bloom-in (falling) half runs at FALL_SPEED x, so one cycle is
+    // (1 + 1/FALL_SPEED)*PI of raw phase instead of 2*PI.
+    const float FALL_SPEED = 1.0;
+    float rawT = (iTime - iTimeCursorChange) * PULSE_SPEED;
+    float m = mod(rawT, (1.0 + 1.0 / FALL_SPEED) * 3.1415926);
+    float pulseT = m < 3.1415926
+        ? m - 1.5707963                              // rise: -PI/2 .. PI/2, original speed
+        : 1.5707963 + (m - 3.1415926) * FALL_SPEED;  // fall: PI/2 .. 3PI/2
+    float gpulse = mix(PULSE_MIN, 1.0, 0.5 + 0.5 * sin(pulseT));
     fragColor.rgb += GLOW_COLOR * (isPrefix * bloom * gpulse);
 }

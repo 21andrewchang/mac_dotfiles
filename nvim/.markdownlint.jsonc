@@ -1,0 +1,15 @@
+{
+  // Prose-hostile rules — disabled. These fight long-form writing and
+  // prompt files; they don't catch real breakage.
+  "MD013": false, // line-length: no 80-char wrapping requirement
+  "MD041": false, // first-line-heading: files needn't start with a #
+  "MD033": false, // no-inline-html: allow raw HTML in prose
+  "MD036": false, // no-emphasis-as-heading: allow **bold** pseudo-headings
+  "MD026": false, // no-trailing-punctuation in headings (allow ? and :)
+  "MD024": false, // no-duplicate-heading: allow repeated section names
+
+  // Everything else stays on — these catch real rendering bugs:
+  //   MD040 (code-block language), MD042 (empty links),
+  //   MD001 (heading-increment), MD009 (trailing whitespace), etc.
+  "default": true
+}

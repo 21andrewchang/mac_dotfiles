@@ -112,17 +112,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     rgb += hash33(vec3(fragCoord, iTime * 256.)) / 512.;
     //rgb = pow(rgb, vec3(0.4545));
 
-    // Spark only on a "type": cursor advanced rightward ~one cell on the same row.
-    // (Ghostty gives no keypress signal, so we infer typing from the move vector:
-    //  backspace/left, vertical nav, and big jumps won't spark. Right-arrow still will.)
-    vec2 typeDelta = iCurrentCursor.xy - iPreviousCursor.xy;
-    float cellH = iCurrentCursor.w;
-    float isType = step(0.1 * cellH, typeDelta.x)        // moved right
-                 * step(typeDelta.x, 2.0 * cellH)        // small move, not a jump
-                 * step(abs(typeDelta.y), 0.5 * cellH);  // same row
-    float mask = clamp(c0 * 0.2, 0.0, 1.0) * fade * isType;
+    // Spark only when the cursor is a bar "|" (the insert/typing shape).
+    // Ghostty passes the cursor cell box in iCurrentCursor: .z = width, .w = height.
+    // A bar cursor is thin (width << height); a block fills the cell (width ~0.5*height).
+    // Combined with `fade` (which only fires on a cursor change), this sparks when the
+    // bar cursor moves while typing, and never sparks in block mode (e.g. vim normal).
+    float isBar = step(iCurrentCursor.z, 0.3 * iCurrentCursor.w);
+    float mask = clamp(c0 * 0.2, 0.0, 1.0) * fade * isBar;
 
     // fragColor = mix(fragColor, vec4(rgb, 1.0), mask);
-    fragColor = fragColor + vec4(rgb * mask, 1.0); // additive
+    fragColor = fragColor + vec4(rgb * mask, 0.0); // additive (0 alpha = keep bg transparency)
     fragColor = min(fragColor, 1.0); // clamp
 }

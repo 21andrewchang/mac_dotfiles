@@ -79,7 +79,7 @@ If you catch yourself writing "the report covers X, Y, Z" — stop. That belongs
 
 ## Promoting to a Docs Site
 
-Generation always lands in `.claude/artifacts/` — that does not change. Separately, the user may **promote** a finished artifact to a shareable docs site. Do this only when asked. In the Bedrock workspace, promotion means copying the file into the docs site's content dir: `cd docs && npm run promote <artifact-name>`, which publishes it at its own URL on the next deploy. Don't promote unprompted, and don't restyle a promoted artifact in the docs repo — fix the source artifact and re-promote.
+Generation always lands in `.claude/artifacts/` — that does not change. Separately, the user may **promote** a finished artifact to a shareable docs site. Do this only when asked. Promotion means copying the file into the docs site's content dir: `cd docs && npm run promote <artifact-name>`, which publishes it at its own URL on the next deploy. Don't promote unprompted, and don't restyle a promoted artifact in the docs repo — fix the source artifact and re-promote.
 
 ## HTML Quality Bar
 
